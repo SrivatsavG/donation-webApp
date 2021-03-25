@@ -1,0 +1,466 @@
+import React, { useContext } from "react";
+import { Link, useHistory } from "react-router-dom";
+import { makeStyles } from "@material-ui/core/styles";
+
+import { NavLink } from "react-router-dom";
+import Menu from "@material-ui/core/Menu";
+import Paper from "@material-ui/core/Paper";
+import MenuItem from "@material-ui/core/MenuItem";
+import Button from "@material-ui/core/Button";
+import ListItemIcon from "@material-ui/core/ListItemIcon";
+import ListItemText from "@material-ui/core/ListItemText";
+import MenuRoundedIcon from '@material-ui/icons/MenuRounded';
+import EditRoundedIcon from "@material-ui/icons/EditRounded";
+
+import ExitToAppIcon from "@material-ui/icons/ExitToApp";
+import FaceIcon from "@material-ui/icons/Face";
+import BusinessIcon from "@material-ui/icons/Business";
+import { withStyles } from "@material-ui/core/styles";
+
+import Grid from "@material-ui/core/Grid";
+import PersonIcon from "@material-ui/icons/Person";
+
+import { AuthorizationContext } from "../../context/authorization-context";
+import { NotificationContext } from "../../context/notification-context";
+
+import "./NavLinks.css";
+
+import backend from "../../../backend";
+import config from "../../../config";
+import { useHttpClient } from "../../../shared/Hooks/http-hook";
+
+const options = [
+  "None",
+  "Atria",
+  "Callisto",
+  "Dione",
+  "Ganymede",
+  "Hangouts Call",
+  "Luna",
+  "Oberon",
+  "Phobos",
+  "Pyxis",
+  "Sedna",
+  "Titania",
+  "Triton",
+  "Umbriel",
+];
+
+const useStyles = makeStyles((theme) => ({
+  desktopNavigation: {
+    display: "none",
+    [theme.breakpoints.up("sm")]: {
+      display: "block",
+    },
+  },
+  icon: {
+    height: "1.5rem",
+    width: "1.5rem",
+    [theme.breakpoints.only("xs")]: {
+      height: "1rem",
+      width: "1rem",
+    },
+  },
+  notificationBox: {
+    // width: 400,
+    backgroundColor: "#F0F0F0",
+    // border: "1px solid #000",
+    // borderRadius: "25px",
+    // boxShadow: theme.shadows[5],
+    // padding: theme.spacing(2, 4, 3)
+  },
+  notificationButton: {
+    backgroundColor: "#F0F0F0",
+    justifyContent: "center",
+  },
+  notificationListItem: {
+    backgroundColor: "white",
+  },
+  navlink:{
+    textDecoration:"none"
+  }
+}));
+
+const StyledMenuItem = withStyles((theme) => ({
+  root: {
+    "&:focus": {
+      backgroundColor: theme.palette.primary.main,
+      "& .MuiListItemIcon-root, & .MuiListItemText-primary": {
+        color: theme.palette.common.white,
+      },
+    },
+  },
+}))(MenuItem);
+
+const StyledMenu = withStyles({
+  paper: {
+    border: "1px solid #d3d4d5",
+    width: "15rem",
+  },
+})((props) => (
+  <Menu
+    elevation={0}
+    getContentAnchorEl={null}
+    anchorOrigin={{
+      vertical: "bottom",
+      horizontal: "right",
+    }}
+    transformOrigin={{
+      vertical: "top",
+      horizontal: "right",
+    }}
+    {...props}
+  />
+));
+
+const NavLinks2 = (props) => {
+  const classes = useStyles();
+
+  const history = useHistory();
+
+  const {
+    isUserLoggedIn,
+    isNgoLoggedIn,
+    logout,
+    userId,
+    ngoId,
+    token,
+  } = useContext(AuthorizationContext);
+
+  const {
+    notifications,
+    setNotifications,
+    clearNotifications,
+    isNotificationOpen,
+    setIsNotificationOpen,
+  } = useContext(NotificationContext);
+
+  const { isLoading, error, sendRequest, clearError } = useHttpClient();
+
+  const [anchorEl, setAnchorEl] = React.useState(null);
+
+  const [anchorElNotification, setAnchorElNotification] = React.useState(null);
+  const open = Boolean(anchorElNotification);
+
+  const handleLogout = async () => {
+    await logout();
+    history.push("/");
+  };
+
+  const handleProfileClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleProfileClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleNotificationClick = (event) => {
+    setAnchorElNotification(event.currentTarget);
+    setIsNotificationOpen(true);
+  };
+
+  const handleNotificationClose = () => {
+    setAnchorElNotification(null);
+    setIsNotificationOpen(false);
+  };
+
+  //MARK ALL AS READ
+  const handleMarkAllAsRead = async () => {
+    try {
+      if (isNgoLoggedIn) {
+        const url = `${backend.ngo.markAsRead}`;
+        const body = JSON.stringify({ ngoId });
+        const responseData = await sendRequest(url, "POST", body, {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        });
+      }
+      if (isUserLoggedIn) {
+        const url = `${backend.user.markAsRead}`;
+        const body = JSON.stringify({ userId });
+        const responseData = await sendRequest(url, "POST", body, {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        });
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  return (
+    <ul className="nav-links">
+      <li>
+        <NavLink exact activeClassName="Navbar-active" to="/categories">
+          Categories
+        </NavLink>
+      </li>
+      <li>
+        <NavLink exact activeClassName="Navbar-active" to="/ngos">
+          NGOs
+        </NavLink>
+      </li>
+      {isUserLoggedIn && (
+        <li>
+          <NavLink
+            exact
+            activeClassName="Navbar-active"
+            to={`/users/${userId}/donate`}
+          >
+            Donate
+          </NavLink>
+        </li>
+      )}
+      {/* -------------------------NOTIFICATION----------------- */}
+      {(isUserLoggedIn || isNgoLoggedIn) && (
+        <li>
+          <Button
+            activeClassName="Navbar-active"
+            onClick={handleNotificationClick}
+            aria-controls="simple-menu"
+            aria-haspopup="true"
+          >
+            {notifications.length == 0 && (
+              <img
+                src={process.env.PUBLIC_URL + "/icons/notification.svg"}
+                className={classes.icon}
+              />
+            )}
+            {notifications.length != 0 && (
+              <img
+                src={process.env.PUBLIC_URL + "/icons/notificationNew.jpg"}
+                className={classes.icon}
+              />
+            )}
+          </Button>
+          <StyledMenu
+            id="long-menu"
+            anchorEl={anchorElNotification}
+            keepMounted
+            open={open}
+            onClose={handleNotificationClose}
+            anchorOrigin={{
+              vertical: "bottom",
+              horizontal: "right",
+            }}
+            transformOrigin={{
+              vertical: "top",
+              horizontal: "right",
+            }}
+            PaperProps={{
+              style: {
+                maxHeight: 50 * 4.5,
+                width: "50ch",
+                backgroundColor: "#F0F0F0",
+              },
+            }}
+          >
+            <>
+              <Paper className={classes.notificationBox}>
+                <div className={classes.notificationActions}>
+                  <span onClick={handleMarkAllAsRead}>Mark all as read</span>
+                  {isNgoLoggedIn && (
+                    <Link to="/myNgo/notifications">Show more</Link>
+                  )}
+                  {isUserLoggedIn && (
+                    <Link to={`/users/${userId}/notifications`}>Show more</Link>
+                  )}
+                </div>
+                {/* <MenuItem className={classes.notificationButton}>
+                  <span onClick={handleMarkAllAsRead}>Mark all as read</span>
+                  {isNgoLoggedIn && (
+                    <Link to="/myNgo/notifications">Show more</Link>
+                  )}
+                  {isUserLoggedIn && (
+                    <Link to="/myPage/notifications">Show more</Link>
+                  )}
+                </MenuItem> */}
+                {/* NO NOTIFICATION */}
+                <div className={classes.notificationList}>
+                  {notifications.length == 0 && <p>No new notifications</p>}
+
+                  {notifications.length > 0 &&
+                    notifications.map((notification) => (
+                      <MenuItem
+                        key={notification}
+                        // selected={}
+                        onClick={handleNotificationClose}
+                        className={classes.notificationListItem}
+                      >
+                        {/* NGO NOTIFICATION-ACCEPTED REQUEST */}
+                        {isNgoLoggedIn &&
+                          notification.type == "acceptedRequest" && (
+                            <Link to="/myNgo/notifications">
+                              <p>
+                                {notification.donorName} has accepted your
+                                request to donate {notification.itemName}.
+                                Contact: {notification.mobile}
+                              </p>
+                            </Link>
+                          )}
+
+                        {/* NGO NOTIFICATION-ACCEPTED REQUEST */}
+                        {isNgoLoggedIn && notification.type == "donatedNeed" && (
+                          <Link to="/myNgo/notifications">
+                            <p>
+                              {notification.donorName} has offered to donate{" "}
+                              {notification.itemName}. Contact:{" "}
+                              {notification.mobile}
+                            </p>
+                          </Link>
+                        )}
+
+                        {/* USER NOTIFICATION - REQUEST */}
+                        {isUserLoggedIn && notification.type == "request" && (
+                          <Link to={`/users/${userId}/notifications`}>
+                            <p>
+                              {notification.ngoName} has requested you to donate{" "}
+                              {notification.itemName}
+                            </p>
+                          </Link>
+                        )}
+
+                        {/* USER NOTIFICATION - REQUEST REMINDER */}
+                        {isUserLoggedIn &&
+                          notification.type == "requestReminder" && (
+                            <Link to={`/users/${userId}/notifications`}>
+                              <p>
+                                {notification.ngoName} has sent a reminder to
+                                donate {notification.itemName}
+                              </p>
+                            </Link>
+                          )}
+
+                        {/* USER NOTIFICATION - WISHLIST */}
+                        {isUserLoggedIn && notification.type == "wishlist" && (
+                          <Link to={`/users/${userId}/notifications`}>
+                            <p>
+                              {notification.ngoName} needs{" "}
+                              {notification.itemName}
+                            </p>
+                          </Link>
+                        )}
+                      </MenuItem>
+                    ))}
+                </div>
+              </Paper>
+            </>
+          </StyledMenu>
+        </li>
+      )}
+      {/*--------------------- PROFILE ----------------------- */}
+      {isUserLoggedIn && (
+        <li>
+          <Button
+            activeClassName="Navbar-active"
+            onClick={handleProfileClick}
+            aria-controls="simple-menu"
+            aria-haspopup="true"
+          >
+            <MenuRoundedIcon />
+          </Button>
+          <StyledMenu
+            id="customized-menu"
+            anchorEl={anchorEl}
+            keepMounted
+            open={Boolean(anchorEl)}
+            onClose={handleProfileClose}
+          >
+            <NavLink
+              exact
+              activeClassName="Navbar-active"
+              to={`/users/${userId}/myPage`}
+              className={classes.navlink}
+            >
+              <StyledMenuItem>
+                <ListItemIcon>
+                  <PersonIcon />
+                </ListItemIcon>
+                <ListItemText primary="My Profile" />
+              </StyledMenuItem>
+            </NavLink>
+            <NavLink
+              exact
+              activeClassName="Navbar-active"
+              to={`/users/edit`}
+              className={classes.navlink}
+            >
+              <StyledMenuItem>
+                <ListItemIcon>
+                  <EditRoundedIcon />
+                </ListItemIcon>
+                <ListItemText primary="Edit Profile" />
+              </StyledMenuItem>
+            </NavLink>
+            <StyledMenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <ExitToAppIcon />
+              </ListItemIcon>
+              <ListItemText primary="Logout" />
+            </StyledMenuItem>
+          </StyledMenu>
+        </li>
+      )}
+      {isNgoLoggedIn && (
+        <li>
+          <Button
+            activeClassName="Navbar-active"
+            to={`/myNgo`}
+            onClick={handleProfileClick}
+            aria-controls="simple-menu"
+            aria-haspopup="true"
+          >
+            <MenuRoundedIcon />
+          </Button>
+          <StyledMenu
+            id="customized-menu"
+            anchorEl={anchorEl}
+            keepMounted
+            open={Boolean(anchorEl)}
+            onClose={handleProfileClose}
+          >
+            <NavLink exact activeClassName="Navbar-active" to={`/myNgo`}>
+              <StyledMenuItem>
+                <ListItemIcon>
+                  <BusinessIcon />
+                </ListItemIcon>
+                <ListItemText primary="My Ngo" />
+              </StyledMenuItem>
+            </NavLink>
+            <NavLink exact activeClassName="Navbar-active" to={`/myNgo/edit`}>
+              <StyledMenuItem>
+                <ListItemIcon>
+                  <BusinessIcon />
+                </ListItemIcon>
+                <ListItemText primary="Edit Profile" />
+              </StyledMenuItem>
+            </NavLink>
+            <StyledMenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <ExitToAppIcon />
+              </ListItemIcon>
+              <ListItemText primary="Logout" />
+            </StyledMenuItem>
+          </StyledMenu>
+        </li>
+      )}
+      {/* -------------------------LOGIN---------------------------- */}
+      {!isUserLoggedIn && !isNgoLoggedIn && (
+        <li>
+          <NavLink exact activeClassName="Navbar-active" to="/signin">
+            Login
+          </NavLink>
+        </li>
+      )}
+      {/* {(isUserLoggedIn || isNgoLoggedIn) && (
+            <li>
+              <button onClick={logout}>Logout</button>
+            </li>
+          )} */}
+    </ul>
+  );
+};
+
+export default NavLinks2;
+

@@ -1,0 +1,372 @@
+import React, { useContext, useState } from "react";
+import { Link, useHistory } from "react-router-dom";
+
+import { makeStyles } from "@material-ui/core/styles";
+import AppBar from "@material-ui/core/AppBar";
+import Toolbar from "@material-ui/core/Toolbar";
+import Typography from "@material-ui/core/Typography";
+import Button from "@material-ui/core/Button";
+import IconButton from "@material-ui/core/IconButton";
+import MenuIcon from "@material-ui/icons/Menu";
+import { NavLink } from "react-router-dom";
+import Menu from "@material-ui/core/Menu";
+import Paper from "@material-ui/core/Paper";
+import MenuItem from "@material-ui/core/MenuItem";
+import { withStyles } from "@material-ui/core/styles";
+
+import Notifications from './Notifications'
+import NavLinks2 from "./NavLinks2";
+import SideDrawer from "./SideDrawer";
+import Backdrop from "./Backdrop";
+
+import backend from "../../../backend";
+import config from "../../../config";
+import { useHttpClient } from "../../../shared/Hooks/http-hook";
+
+import { AuthorizationContext } from "../../context/authorization-context";
+import { NotificationContext } from "../../context/notification-context";
+
+const useStyles = makeStyles((theme) => ({
+  root: {
+    flexGrow: 1,
+  },
+  menuButton: {
+    marginRight: theme.spacing(2),
+    display: "none",
+    [theme.breakpoints.only("xs")]: {
+      display: "block",
+    },
+  },
+  title: {
+    flexGrow: 1,
+  },
+  hide: {
+    display: "none",
+  },
+  notificationBox: {
+    // width: 400,
+    backgroundColor: "#F0F0F0",
+    // border: "1px solid #000",
+    // borderRadius: "25px",
+    // boxShadow: theme.shadows[5],
+    // padding: theme.spacing(2, 4, 3)
+  },
+  notificationButton: {
+    backgroundColor: "transparent",
+    justifyContent: "center",
+    cursor: "pointer",
+    padding: "0.5rem",
+    color: "white",
+    display: "none",
+    [theme.breakpoints.only("xs")]: {
+      display: "block",
+    },
+  },
+  notificationListItem: {
+    backgroundColor: "white",
+  },
+  icon: {
+    height: "1.5rem ",
+    width: "1.5rem",
+  },
+}));
+
+const StyledMenuItem = withStyles((theme) => ({
+  root: {
+    "&:focus": {
+      backgroundColor: theme.palette.primary.main,
+      "& .MuiListItemIcon-root, & .MuiListItemText-primary": {
+        color: theme.palette.common.white,
+      },
+    },
+  },
+}))(MenuItem);
+
+const StyledMenu = withStyles({
+  paper: {
+    border: "1px solid #d3d4d5",
+    width: "15rem",
+  },
+})((props) => (
+  <Menu
+    elevation={0}
+    getContentAnchorEl={null}
+    anchorOrigin={{
+      vertical: "bottom",
+      horizontal: "right",
+    }}
+    transformOrigin={{
+      vertical: "top",
+      horizontal: "right",
+    }}
+    {...props}
+  />
+));
+
+export default function Appbar() {
+  const classes = useStyles();
+  const [drawerIsOpen, setDrawerIsOpen] = useState(false);
+  const { isLoading, error, sendRequest, clearError } = useHttpClient();
+
+  const {
+    isUserLoggedIn,
+    isNgoLoggedIn,
+    logout,
+    userId,
+    ngoId,
+    token,
+  } = useContext(AuthorizationContext);
+  const {
+    notifications,
+    setNotifications,
+    clearNotifications,
+    isNotificationOpen,
+    setIsNotificationOpen,
+  } = useContext(NotificationContext);
+
+  const openDrawer = () => {
+    setDrawerIsOpen(true);
+  };
+
+  const closeDrawer = () => {
+    setDrawerIsOpen(false);
+  };
+
+  const [anchorElNotification, setAnchorElNotification] = React.useState(null);
+  const open = Boolean(anchorElNotification);
+
+  const handleNotificationClick = (event) => {
+    setAnchorElNotification(event.currentTarget);
+    setIsNotificationOpen(true);
+  };
+
+  const handleNotificationClose = () => {
+    setAnchorElNotification(null);
+    setIsNotificationOpen(false);
+  };
+
+  //MARK ALL AS READ
+  const handleMarkAllAsRead = async () => {
+    try {
+      if (isNgoLoggedIn) {
+        const url = `${backend.ngo.markAsRead}`;
+        const body = JSON.stringify({ ngoId });
+        const responseData = await sendRequest(url, "POST", body, {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        });
+      }
+      if (isUserLoggedIn) {
+        const url = `${backend.user.markAsRead}`;
+        const body = JSON.stringify({ userId });
+        const responseData = await sendRequest(url, "POST", body, {
+          Authorization: "Bearer " + token,
+          "Content-Type": "application/json",
+        });
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  return (
+    <div className={classes.root}>
+      {drawerIsOpen && <Backdrop onClick={closeDrawer} />}
+      <AppBar position="static">
+        <Toolbar>
+          {/* ----------------- BURGER ICON if clicked toggles drawer----------------- */}
+          <IconButton
+            edge="start"
+            className={classes.menuButton}
+            color="inherit"
+            aria-label="menu"
+            onClick={openDrawer}
+          >
+            <MenuIcon />
+          </IconButton>
+          {/* -------------------------NOTIFICATION----------------- */}
+          <Notifications/>
+          {(isUserLoggedIn || isNgoLoggedIn) && (
+            <>
+              <Button
+                activeClassName="Navbar-active"
+                onClick={handleNotificationClick}
+                aria-controls="simple-menu"
+                aria-haspopup="true"
+                className={classes.notificationButton}
+              >
+                {notifications.length == 0 && (
+                  <img
+                    src={process.env.PUBLIC_URL + "/icons/notification.svg"}
+                    className={classes.icon}
+                  />
+                )}
+                {notifications.length != 0 && (
+                  <img
+                    src={process.env.PUBLIC_URL + "/icons/notificationNew.jpg"}
+                    className={classes.icon}
+                  />
+                )}
+              </Button>
+              <StyledMenu
+                id="long-menu"
+                anchorEl={anchorElNotification}
+                keepMounted
+                open={open}
+                onClose={handleNotificationClose}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "right",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "right",
+                }}
+                PaperProps={{
+                  style: {
+                    maxHeight: 50 * 4.5,
+                    width: "50ch",
+                    backgroundColor: "#F0F0F0",
+                  },
+                }}
+              >
+                <>
+                  <Paper className={classes.notificationBox}>
+                    <div className={classes.notificationActions}>
+                      <span onClick={handleMarkAllAsRead}>
+                        Mark all as read
+                      </span>
+                      {isNgoLoggedIn && (
+                        <Link to="/myNgo/notifications">Show more</Link>
+                      )}
+                      {isUserLoggedIn && (
+                        <Link to={`/users/${userId}/notifications`}>
+                          Show more
+                        </Link>
+                      )}
+                    </div>
+                    {/* <MenuItem className={classes.notificationButton}>
+                  <span onClick={handleMarkAllAsRead}>Mark all as read</span>
+                  {isNgoLoggedIn && (
+                    <Link to="/myNgo/notifications">Show more</Link>
+                  )}
+                  {isUserLoggedIn && (
+                    <Link to="/myPage/notifications">Show more</Link>
+                  )}
+                </MenuItem> */}
+                    {/* NO NOTIFICATION */}
+                    <div className={classes.notificationList}>
+                      {notifications.length == 0 && <p>No new notifications</p>}
+
+                      {notifications.length > 0 &&
+                        notifications.map((notification) => (
+                          <MenuItem
+                            key={notification}
+                            // selected={}
+                            onClick={handleNotificationClose}
+                            className={classes.notificationListItem}
+                          >
+                            {/* NGO NOTIFICATION-ACCEPTED REQUEST */}
+                            {isNgoLoggedIn &&
+                              notification.type == "acceptedRequest" &&
+                              notification.requestFrom == "ngo" && (
+                                <Link to="/myNgo/notifications">
+                                  <p>
+                                    {notification.donorName} has accepted your
+                                    request to donate {notification.itemName}.
+                                    Contact: {notification.mobile}
+                                  </p>
+                                </Link>
+                              )}
+
+                            {/* NGO NOTIFICATION-DONATE NEED */}
+                            {isNgoLoggedIn &&
+                              notification.type == "donatedNeed" &&
+                              notification.requestFrom == "ngo" && (
+                                <Link to="/myNgo/notifications">
+                                  <p>
+                                    {notification.donorName} has offered to
+                                    donate {notification.itemName}. Contact:{" "}
+                                    {notification.mobile}
+                                  </p>
+                                </Link>
+                              )}
+
+                            {/* USER NOTIFICATION - REQUEST from USER */}
+                            {isUserLoggedIn &&
+                              notification.type == "request" &&
+                              notification.requestFrom == "user" && (
+                                <Link to={`/users/${userId}/notifications`}>
+                                  <p>
+                                    {notification.username} has requested you to
+                                    donate {notification.itemName}.
+                                  </p>
+                                </Link>
+                              )}
+
+                            {/* USER NOTIFICATION - REQUEST from ngo */}
+                            {isUserLoggedIn &&
+                              notification.type == "request" &&
+                              notification.requestFrom == "ngo" && (
+                                <Link to={`/users/${userId}/notifications`}>
+                                  <p>
+                                    {notification.ngoName} has requested you to
+                                    donate {notification.itemName}.
+                                  </p>
+                                </Link>
+                              )}
+
+                            {/* USER NOTIFICATION - REQUEST REMINDER from user*/}
+                            {isUserLoggedIn &&
+                              notification.type == "requestReminder" &&
+                              notification.requestFrom == "user" && (
+                                <Link to={`/users/${userId}/notifications`}>
+                                  <p>
+                                    {notification.username} has sent a reminder
+                                    to donate {notification.itemName}
+                                  </p>
+                                </Link>
+                              )}
+
+                            {/* USER NOTIFICATION - REQUEST REMINDER from NGO*/}
+                            {isUserLoggedIn &&
+                              notification.type == "requestReminder" &&
+                              notification.requestFrom == "ngo" && (
+                                <Link to={`/users/${userId}/notifications`}>
+                                  <p>
+                                    {notification.ngoName} has sent a reminder
+                                    to donate {notification.itemName}
+                                  </p>
+                                </Link>
+                              )}
+
+                            {/* USER NOTIFICATION - NGOEVENT */}
+                            {isUserLoggedIn && notification.type == "ngoEvent" && (
+                              <Link to={`/ngos/${notification.ngo}`}>
+                                <p>
+                                  {notification.ngoName} is organizing{" "}
+                                  {notification.eventTitle} on{" "}
+                                  {notification.eventDate.slice(8,10)}.{notification.eventDate.slice(5,7)}.{notification.eventDate.slice(2,4)} at{" "}
+                                  {notification.eventVenue}
+                                </p>
+                              </Link>
+                            )}
+                          </MenuItem>
+                        ))}
+                    </div>
+                  </Paper>
+                </>
+              </StyledMenu>
+            </>
+          )}
+
+          {/* ------------------LINKS------------------ */}
+
+          {!drawerIsOpen && <NavLinks2 />}
+          {drawerIsOpen && <SideDrawer show={drawerIsOpen} />}
+        </Toolbar>
+      </AppBar>
+    </div>
+  );
+}
+
